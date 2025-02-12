@@ -1,0 +1,7 @@
+
+CONCLUIDOS:
+1 - raiz da sua API deve retornar seu nome, email e o link para o seu LinkedIn (se tiver).
+
+
+
+A FAZER: 
