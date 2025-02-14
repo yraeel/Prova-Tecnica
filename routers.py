@@ -100,62 +100,77 @@ def get_accounts():
 
 
 
-
 @app.route('/<platform>', methods=['GET'])
 def get_ads(platform):
-
     url_platform = f'https://sidebar.stract.to/api/fields?platform={platform}'
     url_accounts = f'https://sidebar.stract.to/api/accounts?platform={platform}'
-    url_insights = f'https://sidebar.stract.to/api/insights?platform={platform}&account=account&token=token&fields=fields'
+
     headers = {
-    "Authorization": f"Bearer {TOKEN}",
-    "Content-Type": "application/json"
+        "Authorization": f"Bearer {TOKEN}",
+        "Content-Type": "application/json"
     }
 
-    
     try:
-        response = requests.get(url_platform, headers=headers)
-        response.raise_for_status()
-        data = response.json()
+        
+        response_fields = requests.get(url_platform, headers=headers)
+        response_fields.raise_for_status()
+        data_platform = response_fields.json()
+
+        
+        available_fields = [field["value"] for field in data_platform.get("fields", [])]
+        fields_param = request.args.get("fields")
+
+        
+        if not fields_param:
+            fields_param = ",".join(available_fields)
+
         
         response_accounts = requests.get(url_accounts, headers=headers)
         response_accounts.raise_for_status()
         data_accounts = response_accounts.json()
+
+        accounts_list = data_accounts.get("accounts", [])
+        insights_data = []
+
         
-        response_insights = requests.get(url_insights, headers=headers)
-        response_insights.raise_for_status()
-        data_insights = response_insights.json()
+        for account in accounts_list:
+            account_id = account.get("id")
+            account_token = account.get("token")
 
+            if account_id and account_token:
+                url_insights = f'https://sidebar.stract.to/api/insights?platform={platform}&account={account_id}&token={account_token}&fields={fields_param}'
+                response_insights = requests.get(url_insights, headers=headers)
 
-        # if "fields" in data:
-        #     field_values = [field["value"] for field in data["fields"]]
-        #     print("Valores dos campos:", field_values)  
+                if response_insights.status_code == 200:
+                    insights_data.append({
+                        "account_id": account_id,
+                        "account_name": account.get("name"),
+                        "insights": response_insights.json()
+                    })
+                else:
+                    insights_data.append({
+                        "account_id": account_id,
+                        "account_name": account.get("name"),
+                        "error": f"Erro ao buscar insights (status {response_insights.status_code})"
+                    })
 
-        return jsonify(f'Platform {platform} Data: ', data, data_accounts, data_insights)
-        
-            
-        # else:
-        #     return jsonify({"error": "Resposta inesperada da API"}), 500
-        
-
-    
+        return jsonify({
+            "platform": platform,
+            "data_platform": data_platform,
+            "accounts": accounts_list,
+            "insights": insights_data
+        })
 
     except requests.exceptions.RequestException as e:
         return jsonify({"error": f"Erro ao conectar à API: {str(e)}"}), 500
 
 
-   
+
+
+
+
+
 
 if __name__ == '__main__':
     app.run()
 
-
-"""
-iterar a lista de plataformas
-e para cada plataforma iterar as contas de cada
-e para cada conta iterar os insights
-"""
-
-"""
-
-"""
